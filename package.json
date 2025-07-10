@@ -3,8 +3,13 @@
   "version": "1.0.0",
   "main": "api/webhook.js",
   "license": "MIT",
+  "type": "module",
   "dependencies": {
-    "@line/bot-sdk": "^7.4.0",
-    "googleapis": "^118.0.0"
+    "@line/bot-sdk": "^7.5.2",
+    "googleapis": "^118.0.0",
+    "crypto": "^1.0.1"
+  },
+  "engines": {
+    "node": ">=14.0.0"
   }
 }
