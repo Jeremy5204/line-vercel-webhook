@@ -1,64 +1,59 @@
-import { google } from 'googleapis';
-import line from '@line/bot-sdk';
 
-const SHEET_ID = process.env.GOOGLE_SHEET_ID;
-const CHANNEL_ACCESS_TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN;
-const GOOGLE_KEY = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY);
+const { GoogleSpreadsheet } = require('google-spreadsheet');
+const axios = require('axios');
 
-const lineClient = new line.Client({
-  channelAccessToken: CHANNEL_ACCESS_TOKEN,
-});
-
-const jwtClient = new google.auth.JWT(
-  GOOGLE_KEY.client_email,
-  null,
-  GOOGLE_KEY.private_key,
-  ['https://www.googleapis.com/auth/spreadsheets']
-);
-
-const sheets = google.sheets({ version: 'v4', auth: jwtClient });
-
-export default async function handler(req, res) {
+module.exports = async (req, res) => {
   if (req.method !== 'POST') {
     return res.status(405).send('Method Not Allowed');
   }
+
+  const doc = new GoogleSpreadsheet(process.env.GOOGLE_SHEET_ID);
+  const creds = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY);
+
   try {
-    await jwtClient.authorize();
+    await doc.useServiceAccountAuth(creds);
+    await doc.loadInfo();
+    const sheet = doc.sheetsByIndex[0];
 
     const events = req.body.events;
-    if (!events || events.length === 0) {
-      return res.status(200).send('No events');
-    }
-
-    for (const event of events) {
+    for (let event of events) {
       if (event.type === 'message' && event.message.type === 'text') {
-        const userId = event.source.userId;
-        const timestamp = new Date(Number(event.timestamp)).toISOString();
-        const message = event.message.text;
+        const userMessage = event.message.text;
+        const replyMessage = `您好，我們已收到您的訊息：「${userMessage}」，我們會儘快與您聯繫！`;
 
-        // 寫入 Google Sheet
-        await sheets.spreadsheets.values.append({
-          spreadsheetId: SHEET_ID,
-          range: 'Sheet1!A:F',
-          valueInputOption: 'USER_ENTERED',
-          requestBody: {
-            values: [[userId, timestamp, message, '', '', '']],
+        await sheet.addRow({
+          userId: event.source.userId,
+          timestamp: new Date(parseInt(event.timestamp)).toISOString(),
+          message: userMessage,
+          reply: replyMessage,
+          matchedIntent: '',
+          intentConfidence: ''
+        });
+
+        await axios.post(
+          'https://api.line.me/v2/bot/message/reply',
+          {
+            replyToken: event.replyToken,
+            messages: [
+              {
+                type: 'text',
+                text: replyMessage
+              }
+            ]
           },
-        });
-
-        // 回覆用戶
-        const replyText = `收到你的訊息：「${message}」，我們會盡快回覆你！`;
-
-        await lineClient.replyMessage(event.replyToken, {
-          type: 'text',
-          text: replyText,
-        });
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}`
+            }
+          }
+        );
       }
     }
 
     res.status(200).send('OK');
   } catch (error) {
-    console.error(error);
-    res.status(500).send('Error');
+    console.error('Error handling webhook:', error);
+    res.status(500).send('Internal Server Error');
   }
-}
+};
