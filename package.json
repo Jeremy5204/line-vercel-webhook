@@ -1,11 +1,10 @@
-
 {
   "name": "line-vercel-webhook",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "api/webhook.js",
   "license": "MIT",
   "dependencies": {
-    "axios": "^0.27.2",
-    "google-spreadsheet": "^3.3.0"
+    "@line/bot-sdk": "^7.4.0",
+    "googleapis": "^118.0.0"
   }
 }
