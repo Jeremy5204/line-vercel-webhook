@@ -1,7 +1,10 @@
 {
-  "name": "line-vercel-bot",
+  "name": "line-vercel-webhook",
   "version": "1.0.0",
-  "main": "index.js",
-  "scripts": {},
-  "dependencies": {}
+  "main": "api/webhook.js",
+  "license": "MIT",
+  "dependencies": {
+    "@line/bot-sdk": "^7.4.0",
+    "googleapis": "^118.0.0"
+  }
 }
